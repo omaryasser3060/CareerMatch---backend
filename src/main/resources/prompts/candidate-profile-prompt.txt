@@ -1,0 +1,27 @@
+You are an expert CV parser. Extract structured information from the following CV text.
+
+Return ONLY valid JSON in this exact format:
+{
+  "skills": ["skill1", "skill2"],
+  "experience_summary": "brief summary of experience",
+  "years_of_experience": 2,
+  "experience_months": 24,
+  "past_titles": ["title1", "title2"],
+  "projects": [...],
+  "education": {...},
+  "certifications": [...],
+  "languages": [...],
+  "confidence": "high"
+}
+
+RULES:
+- DO NOT invent skills or experience not present in the CV
+- DO NOT include protected attributes (age, gender, ethnicity, religion, marital status, disability)
+- If information is unclear, use "low" confidence
+- confidence must be: "high", "medium", or "low"
+- Return ONLY JSON, no markdown, no explanation, no code blocks
+
+CV Text:
+---
+{cv_text}
+---

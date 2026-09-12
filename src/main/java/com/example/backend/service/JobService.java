@@ -6,80 +6,132 @@ import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.model.Job;
 import com.example.backend.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class JobService {
 
     private final JobRepository jobRepository;
 
+    // ============================================================
+    // Search
+    // ============================================================
+
+    @Transactional(readOnly = true)
     public JobListResponse searchJobs(
             String query,
             String location,
-            Integer page,
-            Integer pageSize,
             String employmentType,
             String remoteType,
             BigDecimal minSalary,
-            BigDecimal maxSalary
+            BigDecimal maxSalary,
+            Pageable pageable
     ) {
-        int currentPage = page != null ? page : 1;
-        int size = pageSize != null ? pageSize : 10;
-        Pageable pageable = PageRequest.of(currentPage - 1, size);
-
-        Double minSalaryDouble = minSalary != null ? minSalary.doubleValue() : null;
-        Double maxSalaryDouble = maxSalary != null ? maxSalary.doubleValue() : null;
+        log.debug("Searching jobs: query={}, location={}, page={}", query, location, pageable.getPageNumber());
 
         Page<Job> jobPage = jobRepository.searchJobs(
-                query,
-                location,
-                employmentType,
-                remoteType,
-                minSalaryDouble,
-                maxSalaryDouble,
-                pageable
+                query, location, employmentType, remoteType,
+                minSalary, maxSalary, null, pageable
         );
 
-        List<JobResponse> jobResponses = jobPage.getContent()
-                .stream()
-                .map(JobResponse::fromEntity)
-                .collect(Collectors.toList());
-
-        return JobListResponse.builder()
-                .results(jobResponses)
-                .page(currentPage)
-                .totalPages(jobPage.getTotalPages())
-                .totalCount((int) jobPage.getTotalElements())
-                .pageSize(size)
-                .build();
+        return buildJobListResponse(jobPage);
     }
 
+    @Transactional(readOnly = true)
+    public JobListResponse getRecentJobs(Integer days, Pageable pageable) {
+        LocalDateTime fromDate = LocalDateTime.now().minusDays(days);
+        Page<Job> jobPage = jobRepository.findRecentJobs(fromDate, pageable);
+        return buildJobListResponse(jobPage);
+    }
+
+    // ============================================================
+    // Get Job
+    // ============================================================
+
+    @Transactional(readOnly = true)
     public JobResponse getJobDetails(String jobId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId));
-
         return JobResponse.fromEntity(job);
     }
 
+    @Transactional(readOnly = true)
     public Job getJobEntity(String jobId) {
         return jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job", "id", jobId));
     }
 
-    @org.springframework.transaction.annotation.Transactional
+    // ============================================================
+    // Get Distinct Values
+    // ============================================================
+
+    @Transactional(readOnly = true)
+    public List<String> getDistinctCompanies() {
+        return jobRepository.findDistinctCompanies();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getDistinctLocations() {
+        return jobRepository.findDistinctLocations();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getDistinctEmploymentTypes() {
+        return jobRepository.findDistinctEmploymentTypes();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getDistinctRemoteTypes() {
+        return jobRepository.findDistinctRemoteTypes();
+    }
+
+    // ============================================================
+    // Save (for Adzuna sync)
+    // ============================================================
+
+    @Transactional
     public Job saveJob(Job job) {
         return jobRepository.save(job);
     }
 
-    public List<Job> getJobsBySource(String source) {
-        return jobRepository.findBySource(source);
+    @Transactional
+    public List<Job> saveAllJobs(List<Job> jobs) {
+        return jobRepository.saveAll(jobs);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsByExternalId(String externalId) {
+        return jobRepository.existsByExternalId(externalId);
+    }
+
+    // ============================================================
+    // Helper Methods
+    // ============================================================
+
+    private JobListResponse buildJobListResponse(Page<Job> jobPage) {
+        List<JobResponse> jobResponses = jobPage.getContent()
+                .stream()
+                .map(JobResponse::fromEntity)
+                .toList();
+
+        return JobListResponse.builder()
+                .results(jobResponses)
+                .page(jobPage.getNumber())
+                .totalPages(jobPage.getTotalPages())
+                .totalCount(jobPage.getTotalElements())
+                .pageSize(jobPage.getSize())
+                .hasNext(jobPage.hasNext())
+                .hasPrevious(jobPage.hasPrevious())
+                .build();
     }
 }

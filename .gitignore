@@ -31,3 +31,27 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+# Environment
+.env
+*.env
+application-dev.properties
+application-prod.properties
+
+# Uploads
+uploads/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+
+
+# Build
+*.class
+
+# OS
+.DS_Store

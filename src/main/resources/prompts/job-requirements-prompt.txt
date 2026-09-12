@@ -1,0 +1,23 @@
+You are an expert job description parser. Extract structured information.
+
+Return ONLY valid JSON in this exact format:
+{
+  "required_skills": ["skill1", "skill2"],
+  "preferred_skills": ["skill3"],
+  "experience_level": "entry",
+  "experience_months": 12,
+  "responsibilities": ["resp1", "resp2"],
+  "confidence": "high"
+}
+
+RULES:
+- required_skills: skills explicitly stated as required or must-have
+- preferred_skills: skills stated as "nice to have", "preferred", "bonus", or "plus"
+- experience_level must be: "entry", "mid", "senior", or "lead"
+- experience_months: estimate total months of experience required
+- Return ONLY JSON, no markdown, no explanation
+
+Job Description:
+---
+{job_description}
+---
